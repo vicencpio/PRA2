@@ -3,6 +3,10 @@ title: 'Tipologia i cicle de vida de les dades: PRA2'
 author: "Autor: Vicenç Pio i Begoña Felip"
 date: "Maig 2021"
 output:
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+  word_document: default
   html_document:
     highlight: default
     number_sections: yes
@@ -11,10 +15,6 @@ output:
     toc_depth: 2
     includes:
       in_header: PRA2-header.html
-  word_document: default
-  pdf_document:
-    highlight: zenburn
-    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -43,6 +43,8 @@ Conjunt d'entrenament (train.csv). Aquest conjunt és el que s'utilitza per a co
 
 Conjunt de proves (test.csv). Aquest conjunt s'utilitzarà per veure el rendiment del model en dades les quals no disponsem. Per a cada passatger del conjunt de proves, s'utilitza el model que prèviament s'ha entrenat per predir si el passatger va sobreviure o no a l’enfonsament del Titanic.
 
+Aquests dos conjunts de dades estan creats aleatòriament a partir de les dades oficials de passatgers del Titanic.
+
 ****
 # Exercici 2:
 ****
@@ -51,7 +53,7 @@ Conjunt de proves (test.csv). Aquest conjunt s'utilitzarà per veure el rendimen
 ****
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-trainData <- read.csv('data/train.csv',stringsAsFactors = FALSE)
+trainData <- read.csv('../data/train.csv',stringsAsFactors = FALSE)
 str(trainData)
 ```
 Tenim 891 observacions i 12 variables.
@@ -104,6 +106,7 @@ Alguns nens només viatjaven amb una mainadera, per tant, parch = 0 per a ells.
 ****
 ## Neteja de les dades. Les dades contenen zeros o elements buits? Com gestionaries aquests casos? 
 ****
+Comprovem el nombre d'elements buits del joc de dades:
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # Registres amb valor NA
@@ -111,8 +114,11 @@ colSums(is.na(trainData))
 # Registres amb valor buit
 colSums(trainData=="")
 ```
+Veiem que els camps edat, cabina i embarcat contenen valors buits. Aquesta inexactitud de les dades és degut probablement a que el registre de passatgers no va ser del tot rigurós en aquell moment. Alguns dels passatgers es van colar a bord sense tenir el bitllet, això fa que no es tinguessin dades de l'edat ni de la cabina que tenien.
 
 ### Assignem valor "Desconeguda" per als valors buits de la variable "Cabin":
+
+Enlloc de un string en blanc, assignem la paraula "Desconeguda"
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 trainData$Cabin[trainData$Cabin==""] <- "Desconeguda"
@@ -120,11 +126,15 @@ head(trainData$Cabin,10)
 ```
 ### Assignem la mitjana per a valors buits de la variable "Age":
 
+En el cas de l'edat assignem la mitjana per no alterar les dades.
+
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 trainData$Age[is.na(trainData$Age)] <- signif(mean(trainData$Age,na.rm=T), digits=2)
 head(trainData$Age,10)
 ```
 ### Assignem NA als valors buits de Embarked:
+
+I pel cas dels camps buits d'Embarked, assignem NA.
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 trainData$Embarked[trainData$Embarked==""] <- NA
@@ -149,20 +159,6 @@ head(SibSp.bp$out,8)
 En aquest cas, no caldria tractar els valors extrems ja que no distorsionen els resultats de les prediccions que volem fer amb la base de dades. Tot i ser valors que surten de la mitjana, no són incorrectes ni errades.
 L'outlier amb valor màxim de la variable Fare és `r outlier_max`.
 
-### Discretització variable edat en intervals:
-
-Creem una nova variable discretitzada "segment_edat" que utilitzarem més endavant en anàlisis posteriors.
-
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-trainData["segment_edat"] <- cut(trainData$Age, breaks = c(0,10,20,30,40,50,60,70,100), labels = c("0-9", "10-19", "20-29", "30-39","40-49","50-59","60-69","70-79"))
-```
-
-### Gràfic:
-
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-plot(trainData$segment_edat, col="green")
-```
-
 ****
 # Exercici 4:
 ****
@@ -185,7 +181,7 @@ trainData <- cbind(trainData, dummies)
 summary(trainData)
 ```
 
-Els camps que utilitzarem per fer les agrupacions són: Survived, Pclass, Sexmale, Sexfemale i segment_edat:
+Els camps que utilitzarem per fer les agrupacions són: Survived, Pclass, Sexmale, Sexfemale i Age:
 
 ```{r message= FALSE, warning=FALSE}
 train_data <- trainData[ , c("Survived", "Pclass", "Sexfemale", "Sexmale", "Age")]
@@ -356,7 +352,7 @@ En general podem concloure que els passatgers de classe 1 i 2 i les dones en con
 A continuació carreguem les dades de test i les utilitzarem per avaluar quants supervivents hi hauria fent servir el model creat.
 
 ```{r message= FALSE, warning=FALSE}
-testData <- read.csv('data/test.csv',stringsAsFactors = FALSE)
+testData <- read.csv('../data/test.csv',stringsAsFactors = FALSE)
 dummies <- predict(dummyVars(~ Sex, data = testData), newdata = testData)
 testData <- cbind(testData, dummies)
 dim(testData)
@@ -370,8 +366,12 @@ summary(predicted_model)
 Segons la predicció del model, 266 passatgers no sobreviuen i 152 sí.
 
 ****
-### Model de regressió:
+### Model de regressió lineal múltiple (regresors quantitatius i qualitatius)
 ****
+****
+## Proves de contrast d’hipòtesis, correlacions, regressions, etc. 
+****
+
 Ara passem a avaluar la qualitat del primer model amb esbrinar si la regressió és lineal múltiple (amb regressors quantitatius i qualitatius).
 Carregem el conjunt de dades train_data per generar i esbrinar la qualitat del model amb la fòrmula de l'ajustament de regressió lineal lm().
 
@@ -379,7 +379,7 @@ Carregem el conjunt de dades train_data per generar i esbrinar la qualitat del m
 
 # Torno als valors de train.csv, perquè considero que per fer el model de regressió la variable dependent més significativa és Survived.
 
-trainData <- read.csv('data/train.csv',stringsAsFactors = FALSE)
+trainData <- read.csv('../data/train.csv',stringsAsFactors = FALSE)
 train_data <- trainData[ , c("Survived", "Pclass","Sex", "Age","Fare")]
 
 # Considerem com a variable dependent, la variable Survived, la resta (Age, Sex, Fare i Pclass) les considerarem independents:
@@ -392,9 +392,11 @@ Avaluació de la bondat de l’ajust, a partir del coeficient de determinació o
 
 El model amb totes les variables introduïdes com a predictors té un R^2 (Multiple R-squared) 0.3902, el qual és capaç d'explicar el 39% de la variabilitat observada en la variable dependent "Survived". Com que no és molt proper al 100%, en principi no és un bon model. El p-value del model és significatiu (2.2e-16) perquè està molt per sota del 0.05 que és el valor d'alfa. Els asterics volen dir que tant la variable SexMale (els homes en aquest cas), com Pclass i Age són significatives per al resultat del model. La variable Fare no és significativa per al model.
 
+A partir de la pregunta del principi, característiques dels passatgers que tenien més probabilitats de sobrevisure a l'enfonsament, el que podem deduir és que <b> tant el Sexe, l'Edat i les condicions econòmiques en que es realitzaven el viatge (Classe i Tarifa) són rellevants i significatives per la supervivència</b>.
+
 ```{r message= FALSE, warning=FALSE}
 
-# Representació gràfica del model:
+# Representació gràfica del model (valors ajustats enfront dels residus que ens permetrà veure si la variància és constant)
 
 ggplot(model,aes(model$fitted.values,model$residuals)) + geom_point() + geom_smooth(color = "firebrick", se = FALSE) + geom_hline(yintercept = 0) + theme_bw()
 
@@ -406,12 +408,27 @@ El gràfic de dispersió serveix per validar la relació lineal entre la variabl
 
 ```{r message= FALSE, warning=FALSE}
 
-confint(model) # Mostra de l'interval de confiança per cadascun dels coeficients parcials de regressió.
+### Gràfic per visualitzar la normalitat.
+
+# Gràfic quantil-quantil que compara els residus del model amb els valors d’una variable que es distribueix normalment(QQ plot).
+
+qqnorm(model$residuals)
+qqline(model$residuals)
+
 ```
+
+A partir del gràfic s’observa un patró de dispersió prou regular fins a l'extrem superior. A trets, sembla un patró aleatori dels residus. Això indica que no es compleix al 100%  el supòsit de variància constant en els errors del model. D’altra banda el Q_Q plot, mostra que les dades no s’ajusten sempre a una normal.
 
 ### Comprovació de la normalitat i homogeneïtat de la variància (homoscedasticitat).
 
+## Contrast d'hipòtesis:
+
 Tenint en compte que la normalització redueix el biaix causat per la combinació de valors mesurats a diferents escales a l’hora d’ajustar-los a una escala comuna, típicament entre (-1,1) o entre (0,1), podríem dir que la nostra base de dades està normalitzada. 
+
+Per a realitzar el test partiriem d'una hipòtesis nul·la (variàcies iguals en les mostres) i una hipòtesis alternativa (variàcies iguals en les mostres).
+
+H0 - Hipòtesis nul·la --> var1 = var2
+H1 - Hipòtesis alternativa--> var1 <> var2
 
 ```{r message= FALSE, warning=FALSE}
 
@@ -420,7 +437,7 @@ shapiro.test(trainData$Survived) # Test de Shapiro.
 ```
 Test de normalitat Shapiro on el p-valor (2.2e-16) resultant de la prova és més petit que el nivell de significació (0.05), això vol dir que s'observen diferències estadísticament significatives entre el grup de dades trainData per a la variable Survived.
 
-Ara comprovarem l'homoscedasticitat amb el test de variança. Entre les proves més habituals hi ha el test de fligner.test, que s’aplica quan les dades segueixen una distribució normal, com la nostra.
+Ara comprovarem l'homoscedasticitat amb el test de variança. Entre les proves més habituals hi ha el test de fligner.test, que s’aplica quan les dades segueixen una distribució normal.
 
 ```{r message= FALSE, warning=FALSE}
 library(car)
@@ -428,7 +445,6 @@ library(car)
 fligner.test(Survived ~ Age, data=trainData) # Test d'homogeneitat de les variables Survived i Age.
 ```
 Com que la prova té un p-valor (0.8562) molt superior al nivell de significació (0.05), no es rebutja la hipòtesi nul·la d’homoscedasticitat i es conclou que la variable Age presenta variàncies estadísticament iguals o similars per als grups de Survived.
-
 
 ```{r message= FALSE, warning=FALSE}
 
@@ -448,30 +464,92 @@ fligner.test(Survived ~ Fare, data=trainData) # Test d'homogeneitat de les varia
 ```
 Com que la prova té un p-valor (0.299) superior al nivell de significació (0.05), no es rebutja la hipòtesi nul·la d’homoscedasticitat.
 
+## Correlacions:
+
 ```{r message= FALSE, warning=FALSE}
 
-### Proves de contrast d’hipòtesis, correlacions, regressions, etc. Aplicar almenys tres mètodes d’anàlisi diferents.
+corel<- cor(train_data$Survived,train_data$Fare, method = "pearson")
+corel2<- cor(train_data$Survived,train_data$Pclass, method = "pearson")
+
+train_data$Age[is.na(train_data$Age)] <- signif(mean(train_data$Age,na.rm=T), digits=2) # Per als valors buits de la variable Age, assignaré la mitjana d'edat.
+corel3<-cor(train_data$Survived,train_data$Age, method = "pearson")
 
 ```
+
+Anàlisi de la relació entre les variables Survived i Fare. Aquesta informació és crítica a l'hora d'identificar quins poden ser els millors predictors per al model, quines variables presenten relacions de tipus no lineal (motiu pel que no poden ser incloses) i per identificar col·linealitat entre predictors. Fare seria un bon predictor. El valor és `r corel` perquè està entre 0 i 1 en valor positiu, com faig referència en el següent apartat. 
+
+Per poder realitzar comparacions entre variables, s'ha estandarditzar la covariància, generant els coeficients de correlació. He triat Pearson perquè funciona bé amb variables quantitatives que tenen una distribució normal, tot i que tots varien entre +1 (correlació positiva perfecta) i -1 (correlació negativa perfecta).
+
+El coeficient de correlació entre Survived i Age és `r corel3`, i es tracta d'una correlació negativa perfecta.
+
+Per últim el coeficient de correlació entre Survived i PClass és `r corel2`, que també es tracta d'una correlació negativa perfecta.
+
+## Intervals de confiança del model:
+```{r message= FALSE, warning=FALSE}
+
+confint(model) 
+
+```
+
+La funció confint mostra  l'interval de confiança per cadascun dels coeficients parcials de regressió. Cadascun dels coeficients parcials de regressió dels predictors són les pendents d'un model de regressió lineal múltiple.
+
 
 *****
 # Exercici 5:
 *****
 
-Ja hem anat posant gràfics i taules abans, crec que no cal aquest apartat.
+```{r message= FALSE, warning=FALSE}
 
+# Gràfic que mostra la distribució entre Supervivients i no supervivents.
+
+plot(trainData$Survived,  xlab = "Supervivents", ylab = "Frecuencia", col = c("seagreen", "purple"))
+
+#Gràfics que representen les dades estudiades (Survived i Sex)
+
+taula1<-table(trainData$Sex,trainData$Survived)
+
+barplot(taula1,  col = c("lightblue", "mistyrose"), xlab="Supervivents?", ylab= "Nombre de dones i homes", legend=TRUE, main = "Supervivents per sexe", data = trainData)
+
+graf_prop_Sexe <- prop.table(taula1, margin = 1)
+barplot(graf_prop_Sexe, col = c( "lavender", "cornsilk"), xlab="Supervivents?", ylab= "Percentatge de dones i homes", legend=TRUE, main = "Percentatge de supervivents per sexe", data = trainData)
+
+#Gràfics que representen les dades estudiades (Survived i Age):
+
+taula2<-table(trainData$Survived,trainData$Age)
+
+barplot(taula2,  col = c("mistyrose", "lightcyan"), xlab="Edat", ylab=" Nombre de supervivents", legend=TRUE, main = "Supervivents per Edat", data = trainData)
+
+graf_prop_Edat <- prop.table(taula2, margin = 1)
+barplot(graf_prop_Edat, col = c( "lavender", "blue"), xlab="Edat", ylab= "Percentatge per edat", legend=TRUE, main = "Percentatge de supervivents per edat", data = trainData)
+
+#Gràfics que representen les dades estudiades (Survived i Pclass):
+
+taula3<-table(trainData$Survived,trainData$Pclass)
+
+barplot(taula3,  col = c("blue", "lightcyan"), xlab="Classe", ylab=" Nombre de supervivents", legend=TRUE, main = "Supervivents per Classe", data = trainData)
+
+graf_prop_Classe <- prop.table(taula3, margin = 1)
+barplot(graf_prop_Classe, col = c( "grey", "blue"), xlab="Classe", ylab= "Percentatge per Classe", legend=TRUE, main = "Percentatge de supervivents per Classe", data = trainData)
+```
 *****
 # Exercici 6:
 *****
 
-* Clustering no permet treure conclusions gaire clares.
+* Clustering: és difícil extreure conclusions del model d'agregació creat ja que els clusters obtinguts no mostren una distinció clara entre ells sinó que queden agrupats des de la part baixa del gràfic fins a la part més alta en grups semblants que se solapen entre ells.
 
-* Arbres de decisions amb regles sí que ens permeten predir els supervivents per a un dataset de proves.
+* Arbres de decisions amb regles: en aquest cas sí que podem obtenir una predicció dels supervivents utilitzant el model creat. Primer hem generat un arbre de decisió que ens porta a saber la probabilitat de supervivència en base a les variables utilitzades amb un error del 19%. A partir de l'arbre obtenim el joc de regles que també ens indiquen la probabilitat de supervivència amb el percentatge de validesa per cada regla. Per últim calculem la predicció utilitzant el joc de dades de test.
 
 * Model de regressió: amb el model de regressió s'avalua la qualitat del primer model esbrinant si la regressió és lineal múltiple (amb regressors quantitatius i qualitatius) Es realitza amb el conjunt de dades train_data per esbrinar la qualitat del model amb la fòrmula de l'ajustament de regressió lineal lm(). S'avalua la bondat de l’ajust, a partir del coeficient de determinació o R^2. Es conclou amb els valors de l'anàlisis que, en principi, el model no és prou bo. Realitzem també un gràfic per fer una interpretació visual del model de regressió, el qual serveix per validar la relació lineal entre la variable resposta ("Survived") i els predictors numèrics i categòrics (Age, Sex, Pclass i Fare). El gràfic mostra la dispersió entre cada un dels predictors i els residus del model. 
 
-* Comprovació de la normalitat i homogeneïtat de la variància (homoscedasticitat): hem comprovat que la base de dades utilitzada està normalitzada utilitzant el test de normalitat de Shapiro. L'homoscedasticitat l'hem comprovada amb un test de variança anomenat fligner.test que hem considerat el més adequat per ser d'ús habitual quan les dades segueixen una distribució normal.
+* S'han calculat contrast d'hipòtesis, correlacions i regressions arribant a les següents conclusions: 
 
+Per realitzar el test s'ha partit de l'hipòtesis nul·la (variàcies iguals en les mostres) i l'hipòtesis alternativa (variàcies iguals en les mostres).
+
+Correlacions (només es poden realitzar amb variables numèriques): el millor valor predictor és Fare perquè és un valor positiu que està entre 0 i 1. Age i Pclass són predictors a tenir en compte, però saben que són coeficients de correlació negatius perfectes.
+
+La funció confint mostra  l'interval de confiança per cadascun dels coeficients parcials de regressió. Cadascun dels coeficients parcials de regressió dels predictors són les pendents d'un model de regressió lineal múltiple.
+
+* Comprovació de la normalitat i homogeneïtat de la variància (homoscedasticitat): hem comprovat que la base de dades utilitzada està normalitzada utilitzant el test de normalitat de Shapiro. L'homoscedasticitat l'hem comprovada amb un test de variança anomenat fligner.test que hem considerat el més adequat per ser d'ús habitual quan les dades segueixen una distribució normal. També s'han realitzat dos gràfics de comprovació de la normalitat i la homohomoscedasticitat.
 
 ## Contribucions a la pràctica:
 
